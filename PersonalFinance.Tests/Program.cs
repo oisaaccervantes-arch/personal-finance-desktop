@@ -24,8 +24,8 @@ var store=new FinanceStore();
 int checks=0;
 void Check(bool pass,string label){if(!pass)throw new Exception(label);Console.WriteLine("PASS "+label);checks++;}
 Check(store.Accounts().Any(x=>x.Name=="Cuenta anterior"&&x.CardColor=="#625081"&&x.Bank==""),"La actualización conserva cuentas del esquema anterior");
-Check(store.Categories().First(x=>x.Name=="Hogar").Icon=="🏠","Las categorías iniciales usan iconos propios");
-var homeCategory=store.Categories().First(x=>x.Name=="Hogar");homeCategory.Icon="⌂";store.Save(homeCategory,homeCategory.Id);_ = new FinanceStore();Check(store.Categories().First(x=>x.Name=="Hogar").Icon=="🏠","Los iconos predeterminados anteriores se actualizan sin alterar las categorías");
+Check(store.Categories().First(x=>x.Name=="Hogar").Icon=="house","Las categorías iniciales usan iconos vectoriales");
+var homeCategory=store.Categories().First(x=>x.Name=="Hogar");homeCategory.Icon="⌂";store.Save(homeCategory,homeCategory.Id);_ = new FinanceStore();Check(store.Categories().First(x=>x.Name=="Hogar").Icon=="house","Los iconos predeterminados anteriores se actualizan sin alterar las categorías");
 var account=new Account{Name="Test",Type="Cuenta de ahorro",OpeningCents=10000};store.Save(account,0);
 var categories=store.Categories();var inc=categories.First(x=>x.Type=="Ingreso");var exp=categories.First(x=>x.Type=="Gasto");
 var movement=new Movement{Description="Ingreso",Cents=125055,Date=DateTime.Today,AccountId=account.Id,CategoryId=inc.Id};store.Save(movement,0);
@@ -83,9 +83,10 @@ Check(vm.ProjectedBalance(future)==expectedProjection&&store.Movements().All(x=>
 var subscriptionCategory=new Category{Name="Suscripciones",Type="Gasto",Icon="🔁",Color="#BAC8D5"};store.Save(subscriptionCategory,0);
 var subscriptionRule=new RecurringRule{Description="Música",Type="Gasto",Cents=7500,StartDate=DateTime.Today.AddMonths(1),AccountId=debitCard.Id,CategoryId=subscriptionCategory.Id};store.SaveRecurring(subscriptionRule);
 Check(subscriptionCategory.Id>0&&store.RecurringRules().Any(x=>x.CategoryId==subscriptionCategory.Id),"Una categoría nueva se puede usar de inmediato en un gasto recurrente");
-Exception? iconLoadError=null;var iconThread=new Thread(()=>{try{_ = new System.Windows.Application();_ = PersonalFinance.Views.CategoryIcons.View("🔁");_ = new PersonalFinance.Views.CategoryIconPicker("🔁");}catch(Exception ex){iconLoadError=ex;}});iconThread.SetApartmentState(ApartmentState.STA);iconThread.Start();iconThread.Join();
+_ = new FinanceStore();Check(store.Categories().First(x=>x.Id==subscriptionCategory.Id).Icon=="arrow-repeat","Los iconos emoji existentes migran a identificadores vectoriales");
+Exception? iconLoadError=null;var iconThread=new Thread(()=>{try{_ = new System.Windows.Application();_ = PersonalFinance.Views.CategoryIcons.View("arrow-repeat");_ = new PersonalFinance.Views.CategoryIconPicker("arrow-repeat");}catch(Exception ex){iconLoadError=ex;}});iconThread.SetApartmentState(ApartmentState.STA);iconThread.Start();iconThread.Join();
 if(iconLoadError!=null)Console.WriteLine(iconLoadError);
-Check(iconLoadError==null,"Los iconos locales de Twemoji se cargan en WPF");
+Check(iconLoadError==null,"Los iconos vectoriales locales se cargan en WPF");
 var quickCash=new QuickMovementViewModel(store.Accounts(),store.Categories());quickCash.Choose.Execute("Efectivo");quickCash.Choose.Execute("Retiro");quickCash.Account=store.Accounts().Single(x=>x.Id==debitCard.Id);quickCash.Amount="10";var cashBefore=vm.AccountBalance(cash);quickCash.Save.Execute(null);vm.Reload();Check(vm.AccountBalance(cash)==cashBefore+1000&&quickCash.Error.Length==0,"El registro rápido retira efectivo hacia la billetera");
 var recurringBackup=Path.Combine(folder,"recurring-demo.db");store.Backup(recurringBackup);
 store.SaveAppearance("Oscuro","#FFFFFF");PersonalFinance.Services.ThemeService.Apply(store.Appearance());Check(PersonalFinance.Services.ThemeService.BackgroundColor=="#FFFFFF","El fondo blanco se conserva en modo oscuro");

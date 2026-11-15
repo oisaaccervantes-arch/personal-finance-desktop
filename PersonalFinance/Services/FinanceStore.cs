@@ -2,6 +2,7 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using PersonalFinance.Data;
 using PersonalFinance.Models;
+using PersonalFinance.Views;
 using System.IO;
 
 namespace PersonalFinance.Services;
@@ -14,14 +15,16 @@ public sealed class FinanceStore
         SchemaUpgrade.Apply();
         if (!db.Categories.Any())
         {
-            db.Categories.AddRange(new Category { Name="Sueldo", Type="Ingreso", Icon="💼" }, new Category {Name="Otros ingresos", Type="Ingreso", Icon="💸"},
-                new Category {Name="Alimentación", Icon="🍽"}, new Category {Name="Hogar", Icon="🏠"}, new Category {Name="Transporte", Icon="🚗"}, new Category {Name="Compras", Icon="🛒"}, new Category {Name="Salud", Icon="💊"});
+            db.Categories.AddRange(new Category { Name="Sueldo", Type="Ingreso", Icon="briefcase" }, new Category {Name="Otros ingresos", Type="Ingreso", Icon="cash"},
+                new Category {Name="Alimentación", Icon="cup-hot"}, new Category {Name="Hogar", Icon="house"}, new Category {Name="Transporte", Icon="car-front"}, new Category {Name="Compras", Icon="basket"}, new Category {Name="Salud", Icon="capsule"});
             db.SaveChanges();
         }
-        foreach(var (name,type,oldIcon,newIcon) in new[]{("Sueldo","Ingreso","↗","💼"),("Otros ingresos","Ingreso","+","💸"),("Alimentación","Gasto","◈","🍽"),("Hogar","Gasto","⌂","🏠"),("Transporte","Gasto","↔","🚗"),("Compras","Gasto","◇","🛒"),("Salud","Gasto","+","💊")})
+        foreach(var (name,type,oldIcon,newIcon) in new[]{("Sueldo","Ingreso","↗","briefcase"),("Otros ingresos","Ingreso","+","cash"),("Alimentación","Gasto","◈","cup-hot"),("Hogar","Gasto","⌂","house"),("Transporte","Gasto","↔","car-front"),("Compras","Gasto","◇","basket"),("Salud","Gasto","+","capsule")})
         {
             foreach(var category in db.Categories.Where(x=>x.Name==name&&x.Type==type&&x.Icon==oldIcon))category.Icon=newIcon;
         }
+        foreach(var category in db.Categories)
+            category.Icon=CategoryIcons.Normalize(category.Icon);
         if(db.ChangeTracker.HasChanges())db.SaveChanges();
         if(!db.Accounts.Any(x=>x.Type=="Efectivo")){db.Accounts.Add(new Account{Name="Efectivo",Type="Efectivo",OpeningCents=0});db.SaveChanges();}
     }
@@ -94,7 +97,7 @@ public sealed class FinanceStore
         else
         {
             string name=incoming?"Otros ingresos":"Otro",type=incoming?"Ingreso":"Gasto";
-            category=db.Categories.FirstOrDefault(x=>x.Name==name&&x.Type==type)??new Category{Name=name,Type=type,Icon=incoming?"💸":"✨"};
+            category=db.Categories.FirstOrDefault(x=>x.Name==name&&x.Type==type)??new Category{Name=name,Type=type,Icon=incoming?"cash":"stars"};
             if(category.Id==0){db.Categories.Add(category);db.SaveChanges();}
         }
         db.Movements.Add(new Movement{Description=concept.Trim(),Cents=cents,Date=DateTime.Today,AccountId=accountId,CategoryId=category.Id});

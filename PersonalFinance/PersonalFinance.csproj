@@ -9,10 +9,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="SharpVectors.Wpf" Version="1.8.6" />
     <Resource Include="Assets/Fonts/*.ttf" />
-    <Resource Include="Assets/Twemoji/*.png" />
+    <Resource Include="Assets/BootstrapIcons/*.svg" />
     <Content Include="Assets/Fonts/OFL-SpaceGrotesk.txt" CopyToPublishDirectory="PreserveNewest" />
-    <Content Include="Assets/Twemoji/LICENSE-GRAPHICS" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="Assets/BootstrapIcons/LICENSE" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="../LICENSE" Link="LICENSE" CopyToPublishDirectory="PreserveNewest" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.0" />
     <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.5" />

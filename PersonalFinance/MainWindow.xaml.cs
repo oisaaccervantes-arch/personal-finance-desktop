@@ -7,6 +7,7 @@ using System.Windows.Media;
 using System.Windows.Shapes;
 using System.Windows.Input;
 using System.Windows.Media.Animation;
+using System.Windows.Threading;
 using Microsoft.Win32;
 using PersonalFinance.Models;
 using PersonalFinance.ViewModels;
@@ -21,9 +22,11 @@ public partial class MainWindow : Window
     private Category? category;
     private DateTime? from, to;
     private bool advancedAppearanceOpen;
+    private readonly DispatcherTimer statusTimer=new(){Interval=TimeSpan.FromSeconds(3)};
     public MainWindow()
     {
         InitializeComponent(); Width=Math.Min(1440,SystemParameters.WorkArea.Width-40); Height=Math.Min(920,SystemParameters.WorkArea.Height-40); DataContext=vm;
+        statusTimer.Tick+=(_,_)=>{statusTimer.Stop();StatusToast.Visibility=Visibility.Collapsed;};
         Loaded+=(_,_)=>StartAmbient();
         SizeChanged+=(_,_)=>QuickHost.MaxHeight=Math.Max(280,ActualHeight-105);
         StateChanged+=(_,_)=>{if(WindowState==WindowState.Minimized)StopAmbient();else StartAmbient();if(WindowState==WindowState.Maximized){MaxHeight=SystemParameters.WorkArea.Height;MaxWidth=SystemParameters.WorkArea.Width;}else{MaxHeight=double.PositiveInfinity;MaxWidth=double.PositiveInfinity;}};
@@ -52,6 +55,11 @@ public partial class MainWindow : Window
     private void Safe(Action action)
     {
         try {action();} catch(Exception ex) {Views.GlassDialog.Show(this,ex is Microsoft.EntityFrameworkCore.DbUpdateException ? "No se pudo guardar. Revisa que no exista un presupuesto para esa categoría y mes, o que el registro no esté en uso." : ex.Message,"Personal Finance");}
+    }
+    private void ShowStatus(string message)
+    {
+        Status.Text=message;StatusToast.Visibility=Visibility.Visible;
+        statusTimer.Stop();statusTimer.Start();
     }
     private void Render()
     {
@@ -245,9 +253,9 @@ public partial class MainWindow : Window
     {
         Category? created=null;
         var f=new Editor(owner,"Nueva categoría de "+kind.ToLowerInvariant());
-        var name=f.Input("Nombre","");var icon=f.PickIcon("Icono","✨");
+        var name=f.Input("Nombre","");var icon=f.PickIcon("Icono","stars");
         var color=f.Select("Color",new[]{"#BAC8D5","#E2E2E6","#9CA3AF","#56FEB7","#B9A5D5","#FFB4AB"},"#BAC8D5",x=>x);
-        f.Save(()=>{created=new Category{Name=Required(name.Text),Type=kind,Icon=icon.SelectedEmoji,Color=(string)color.SelectedItem};vm.Save(created,0);});
+        f.Save(()=>{created=new Category{Name=Required(name.Text),Type=kind,Icon=icon.SelectedKey,Color=(string)color.SelectedItem};vm.Save(created,0);});
         if(f.ShowDialog()!=true)return null;
         vm.Reload();return created;
     }
@@ -256,13 +264,31 @@ public partial class MainWindow : Window
         Metrics();var chart=Card(Chart());chart.Margin=new Thickness(0,0,0,22);ContentPanel.Children.Add(chart);
         ContentPanel.Children.Add(Text("Resumen por mes",21));var help=Text("Ingresos, gastos y ahorro de los últimos doce meses.",12,"#9EA5B1");help.Margin=new Thickness(0,7,0,18);ContentPanel.Children.Add(help);
         var entries=Enumerable.Range(-11,12).Reverse().Select(i=>{var month=vm.Month.AddMonths(i);var list=vm.Movements.Where(x=>x.Date>=month&&x.Date<month.AddMonths(1));long income=list.Where(x=>x.Category.Type=="Ingreso").Sum(x=>x.Cents),expense=list.Where(x=>x.Category.Type=="Gasto").Sum(x=>x.Cents);return new{Month=month.ToString("MMMM yyyy",CultureInfo.GetCultureInfo("es-MX")),Income=MainViewModel.Money(income),Expense=MainViewModel.Money(expense),Saving=MainViewModel.Money(income-expense)};}).ToList();
-        var grid=new DataGrid{ItemsSource=entries,Height=520,MinWidth=680};
-        var period=new Style(typeof(TextBlock));period.Setters.Add(new Setter(TextBlock.FontWeightProperty,FontWeights.SemiBold));period.Setters.Add(new Setter(TextBlock.ForegroundProperty,FindResource("TextPrimary")));
-        var money=new Style(typeof(TextBlock));money.Setters.Add(new Setter(TextBlock.TextAlignmentProperty,TextAlignment.Right));money.Setters.Add(new Setter(TextBlock.FontWeightProperty,FontWeights.Medium));money.Setters.Add(new Setter(TextBlock.ForegroundProperty,FindResource("TextPrimary")));
-        var incomeStyle=new Style(typeof(TextBlock),money);incomeStyle.Setters.Add(new Setter(TextBlock.ForegroundProperty,FindResource("IncomeText")));
-        var expenseStyle=new Style(typeof(TextBlock),money);expenseStyle.Setters.Add(new Setter(TextBlock.ForegroundProperty,FindResource("ExpenseText")));
-        foreach(var (header,path,width,style) in new[]{("PERIODO","Month",1.4d,period),("INGRESOS","Income",1d,incomeStyle),("GASTOS","Expense",1d,expenseStyle),("AHORRO","Saving",1d,money)})grid.Columns.Add(new DataGridTextColumn{Header=header,Binding=new System.Windows.Data.Binding(path),Width=new DataGridLength(width,DataGridLengthUnitType.Star),ElementStyle=style});
-        var table=Card(grid);table.Margin=new Thickness(0,0,0,22);ContentPanel.Children.Add(table);ContentPanel.Children.Add(Action("Exportar movimientos del mes",()=>Export(vm.Current)));
+        var report=new Grid();
+        foreach(var width in new[]{1.4,1.0,1.0,1.0})report.ColumnDefinitions.Add(new ColumnDefinition{Width=new GridLength(width,GridUnitType.Star)});
+        report.RowDefinitions.Add(new RowDefinition{Height=new GridLength(42)});
+        string[] headings=["PERIODO","INGRESOS","GASTOS","AHORRO"];
+        for(int column=0;column<4;column++)
+        {
+            var heading=Text(headings[column],11,"#9EA5B1");heading.FontWeight=FontWeights.SemiBold;heading.VerticalAlignment=VerticalAlignment.Center;heading.TextAlignment=column==0?TextAlignment.Left:TextAlignment.Right;
+            Grid.SetColumn(heading,column);report.Children.Add(heading);
+        }
+        for(int row=0;row<entries.Count;row++)
+        {
+            report.RowDefinitions.Add(new RowDefinition{Height=new GridLength(58)});
+            var entry=entries[row];string[] values=[entry.Month,entry.Income,entry.Expense,entry.Saving];
+            var divider=new Border{BorderBrush=(Brush)FindResource("Divider"),BorderThickness=new Thickness(0,1,0,0),IsHitTestVisible=false};
+            Grid.SetRow(divider,row+1);Grid.SetColumnSpan(divider,4);report.Children.Add(divider);
+            for(int column=0;column<4;column++)
+            {
+                var cell=Text(values[column],14);cell.FontWeight=column is 0 or 3?FontWeights.SemiBold:FontWeights.Medium;
+                cell.VerticalAlignment=VerticalAlignment.Center;cell.TextAlignment=column==0?TextAlignment.Left:TextAlignment.Right;
+                if(column==1)cell.SetResourceReference(TextBlock.ForegroundProperty,"IncomeText");
+                if(column==2)cell.SetResourceReference(TextBlock.ForegroundProperty,"ExpenseText");
+                Grid.SetRow(cell,row+1);Grid.SetColumn(cell,column);report.Children.Add(cell);
+            }
+        }
+        var table=Card(report);table.Margin=new Thickness(0,0,0,22);ContentPanel.Children.Add(table);ContentPanel.Children.Add(Action("Exportar movimientos del mes",()=>Export(vm.Current)));
     }
     private void Settings()
     {
@@ -288,12 +314,12 @@ public partial class MainWindow : Window
             ContentPanel.Children.Add(Card(advanced));
         }
         var p=new StackPanel();p.Children.Add(Text("Almacenamiento local",22));var t=Text("Tu información se guarda únicamente en este equipo. Los respaldos contienen tus cuentas y movimientos; guárdalos en una ubicación de confianza.",14,"#9EA5B1");t.Margin=new Thickness(0,16,0,20);p.Children.Add(t);p.Children.Add(Text(Data.FinanceDb.DatabasePath,12,"#9EA5B1"));var bar=new WrapPanel{Margin=new Thickness(0,24,0,0)};
-        bar.Children.Add(Action("Crear respaldo",()=>{var d=new SaveFileDialog{Filter="Respaldo SQLite|*.db",FileName=$"PersonalFinance-{DateTime.Today:yyyy-MM-dd}.db"};if(d.ShowDialog(this)==true){vm.Backup(d.FileName);Status.Text="Respaldo guardado.";}}));
-        bar.Children.Add(Action("Restaurar respaldo",()=>{var d=new OpenFileDialog{Filter="Respaldo SQLite|*.db;*.bak"};if(d.ShowDialog(this)==true&&Views.GlassDialog.Show(this,"Se reemplazarán los datos actuales. Se conservará una copia automática anterior. ¿Continuar?","Restaurar",true)){vm.Restore(d.FileName);Services.ThemeService.Apply(vm.Appearance);vm.Reload();Status.Text="Respaldo restaurado.";}}));p.Children.Add(bar);ContentPanel.Children.Add(Card(p));ContentPanel.Children.Add(Text("Moneda de esta versión: MXN · Los saldos de tarjetas pueden ser negativos para representar deuda.",13,"#9EA5B1"));
+        bar.Children.Add(Action("Crear respaldo",()=>{var d=new SaveFileDialog{Filter="Respaldo SQLite|*.db",FileName=$"PersonalFinance-{DateTime.Today:yyyy-MM-dd}.db"};if(d.ShowDialog(this)==true){vm.Backup(d.FileName);ShowStatus("Respaldo guardado.");}}));
+        bar.Children.Add(Action("Restaurar respaldo",()=>{var d=new OpenFileDialog{Filter="Respaldo SQLite|*.db;*.bak"};if(d.ShowDialog(this)==true&&Views.GlassDialog.Show(this,"Se reemplazarán los datos actuales. Se conservará una copia automática anterior. ¿Continuar?","Restaurar",true)){vm.Restore(d.FileName);Services.ThemeService.Apply(vm.Appearance);vm.Reload();ShowStatus("Respaldo restaurado.");}}));p.Children.Add(bar);ContentPanel.Children.Add(Card(p));ContentPanel.Children.Add(Text("Moneda de esta versión: MXN · Los saldos de tarjetas pueden ser negativos para representar deuda.",13,"#9EA5B1"));
     }
     private void ApplyAppearance(AppearanceSettings value)
     {
-        vm.SaveAppearance(value);Services.ThemeService.Apply(vm.Appearance);Render();Status.Text=$"✓ Tema {value.ThemeName.ToLowerInvariant()} guardado.";
+        vm.SaveAppearance(value);Services.ThemeService.Apply(vm.Appearance);Render();ShowStatus($"Tema {value.ThemeName.ToLowerInvariant()} guardado.");
     }
     private static FrameworkElement AppearanceField(string label,FrameworkElement control,double width)
     {
@@ -321,12 +347,12 @@ public partial class MainWindow : Window
         outer.MouseEnter+=(_,_)=>outer.Opacity=.83;outer.MouseLeave+=(_,_)=>outer.Opacity=1;
         return outer;
     }
-    private void Delete<T>(int id) where T:class {if(Views.GlassDialog.Show(this,"¿Eliminar este registro? Esta acción no se puede deshacer. Los registros utilizados por movimientos o presupuestos no se pueden eliminar.","Confirmar eliminación",true)){vm.Delete<T>(id);vm.Reload();Status.Text="Registro eliminado.";}}
+    private void Delete<T>(int id) where T:class {if(Views.GlassDialog.Show(this,"¿Eliminar este registro? Esta acción no se puede deshacer. Los registros utilizados por movimientos o presupuestos no se pueden eliminar.","Confirmar eliminación",true)){vm.Delete<T>(id);vm.Reload();ShowStatus("Registro eliminado.");}}
     private void Export(IEnumerable<Movement> source)
     {
         var d=new SaveFileDialog{Filter="Archivo CSV|*.csv",FileName=$"movimientos-{vm.Month:yyyy-MM}.csv"};if(d.ShowDialog(this)!=true)return;
         static string Q(string s){if(s.Length>0&&"=+-@\t\r".Contains(s[0]))s="'"+s;return "\""+s.Replace("\"","\"\"")+"\"";}
-        var lines=new List<string>{"Fecha,Descripcion,Cuenta,Categoria,Tipo,Importe,Moneda"};lines.AddRange(source.Select(x=>string.Join(",",x.Date.ToString("yyyy-MM-dd"),Q(x.Description),Q(x.Account.Name),Q(x.Category.Name),x.Category.Type,(MainViewModel.Signed(x)/100m).ToString("F2",CultureInfo.InvariantCulture),"MXN")));File.WriteAllLines(d.FileName,lines,new UTF8Encoding(true));Status.Text="CSV exportado correctamente.";
+        var lines=new List<string>{"Fecha,Descripcion,Cuenta,Categoria,Tipo,Importe,Moneda"};lines.AddRange(source.Select(x=>string.Join(",",x.Date.ToString("yyyy-MM-dd"),Q(x.Description),Q(x.Account.Name),Q(x.Category.Name),x.Category.Type,(MainViewModel.Signed(x)/100m).ToString("F2",CultureInfo.InvariantCulture),"MXN")));File.WriteAllLines(d.FileName,lines,new UTF8Encoding(true));ShowStatus("CSV exportado correctamente.");
     }
     private void EditMovement(Movement? m)=>Safe(()=>
     {
@@ -338,11 +364,11 @@ public partial class MainWindow : Window
     {
         var editorVm=new AccountEditorViewModel(account,account==null?0:vm.AccountBalance(account)-account.OpeningCents);
         var editor=new Views.AccountEditor(this,editorVm);
-        if(editor.ShowDialog()==true){vm.Reload();Status.Text="✓ Cuenta guardada. La tarjeta del dashboard ya está actualizada.";}
+        if(editor.ShowDialog()==true){vm.Reload();ShowStatus("Cuenta guardada. La tarjeta del dashboard ya está actualizada.");}
     }
     private void EditCategory(Category? c)
     {
-        var f=new Editor(this,c==null?"Nueva categoría":"Editar categoría");var name=f.Input("Nombre",c?.Name??"");var type=f.Select("Tipo",new[]{"Ingreso","Gasto"},c?.Type??"Gasto",x=>x);if(c!=null&&(vm.Movements.Any(x=>x.CategoryId==c.Id)||vm.Budgets.Any(x=>x.CategoryId==c.Id)))type.IsEnabled=false;var icon=f.PickIcon("Icono",c?.Icon??"✨");var color=f.Select("Color",new[]{"#BAC8D5","#E2E2E6","#9CA3AF","#56FEB7","#B9A5D5","#FFB4AB"},c?.Color??"#BAC8D5",x=>x);f.Save(()=>{var entity=new Category{Id=c?.Id??0,Name=Required(name.Text),Type=(string)type.SelectedItem,Icon=icon.SelectedEmoji,Color=(string)color.SelectedItem};vm.Save(entity,entity.Id);});if(f.ShowDialog()==true)vm.Reload();
+        var f=new Editor(this,c==null?"Nueva categoría":"Editar categoría");var name=f.Input("Nombre",c?.Name??"");var type=f.Select("Tipo",new[]{"Ingreso","Gasto"},c?.Type??"Gasto",x=>x);if(c!=null&&(vm.Movements.Any(x=>x.CategoryId==c.Id)||vm.Budgets.Any(x=>x.CategoryId==c.Id)))type.IsEnabled=false;var icon=f.PickIcon("Icono",c?.Icon??"stars");var color=f.Select("Color",new[]{"#BAC8D5","#E2E2E6","#9CA3AF","#56FEB7","#B9A5D5","#FFB4AB"},c?.Color??"#BAC8D5",x=>x);f.Save(()=>{var entity=new Category{Id=c?.Id??0,Name=Required(name.Text),Type=(string)type.SelectedItem,Icon=icon.SelectedKey,Color=(string)color.SelectedItem};vm.Save(entity,entity.Id);});if(f.ShowDialog()==true)vm.Reload();
     }
     private void EditBudget(Budget? b)
     {

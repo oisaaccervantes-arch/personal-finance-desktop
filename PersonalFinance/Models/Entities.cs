@@ -26,7 +26,7 @@ public class Category
     public int Id { get; set; }
     public string Name { get; set; } = "";
     public string Type { get; set; } = "Gasto";
-    public string Icon { get; set; } = "◇";
+    public string Icon { get; set; } = "stars";
     public string Color { get; set; } = "#BAC8D5";
     public override string ToString() => Name;
 }

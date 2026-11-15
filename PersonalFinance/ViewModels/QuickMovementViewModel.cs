@@ -51,7 +51,7 @@ public sealed class QuickMovementViewModel : INotifyPropertyChanged
     {
         Accounts=accounts.ToList();
         BankAccounts=Accounts.Where(x=>x.Type!="Efectivo").ToList();
-        Categories=categories.Where(x=>x.Type=="Gasto"&&x.Name!="Otro").Concat(new[]{new Category{Id=0,Name="Otro",Type="Gasto",Icon="◇"}}).ToList();
+        Categories=categories.Where(x=>x.Type=="Gasto"&&x.Name!="Otro").Concat(new[]{new Category{Id=0,Name="Otro",Type="Gasto",Icon="stars"}}).ToList();
         Choose=new RelayCommand(p=>{var choice=(string?)p;if(choice=="Efectivo"){cashChoice=true;error="";Notify();return;}cashChoice=false;transfer=choice is "Retiro" or "Deposito";withdrawal=choice=="Retiro";incoming=transfer?null:choice=="Ingreso";if(transfer&&Account?.Type=="Efectivo")Account=null;Concept=transfer?(withdrawal?"Retiro de efectivo":"Depósito de efectivo"):"";error="";Notify();});
         Back=new RelayCommand(_=>{if(transfer){transfer=false;cashChoice=true;}else{incoming=null;cashChoice=false;}error="";Notify();});
         Close=new RelayCommand(_=>Closed?.Invoke());

@@ -32,7 +32,7 @@ public partial class MainWindow
         var quick=new QuickMovementViewModel(vm.Accounts,vm.Categories);
         quick.Closed+=CloseQuick;
         quick.AccountsRequested+=()=>{CloseQuick();vm.Navigate.Execute("Cuentas");};
-        quick.Saved+=()=>{CloseQuick();vm.Reload();Status.Text="✓ Movimiento guardado. Los saldos ya están actualizados.";};
+        quick.Saved+=()=>{CloseQuick();vm.Reload();ShowStatus("Movimiento guardado. Los saldos ya están actualizados.");};
         var view=new QuickMovementView{DataContext=quick};
         QuickHost.Content=view;QuickOverlay.Visibility=Visibility.Visible;
         Workspace.IsEnabled=false;SidebarShell.IsEnabled=false;QuickAddButton.IsEnabled=false;
