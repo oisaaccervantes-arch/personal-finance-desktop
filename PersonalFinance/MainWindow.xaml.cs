@@ -94,7 +94,7 @@ public partial class MainWindow : Window
         var right=new StackPanel();right.Children.Add(Text("Distribución de gastos",20));right.Children.Add(Text(vm.MonthLabel,11,"#9EA5B1"));
         var groups=vm.Current.Where(x=>x.Category.Type=="Gasto").GroupBy(x=>x.Category).OrderByDescending(g=>g.Sum(x=>x.Cents)).ToList();
         if(groups.Count==0) {var empty=Text("Aún no hay gastos este mes.\nRegistra un movimiento para ver su distribución.",14,"#9EA5B1");empty.Margin=new Thickness(0,70,0,60);right.Children.Add(empty);}
-        foreach(var g in groups.Take(5)){var p=new StackPanel{Margin=new Thickness(0,20,0,0)};p.Children.Add(Text($"{g.Key.Icon}  {g.Key.Name}     {MainViewModel.Money(g.Sum(x=>x.Cents))}",13));p.Children.Add(new ProgressBar{Value=100d*g.Sum(x=>x.Cents)/Math.Max(1,vm.Expense),Height=5,Margin=new Thickness(0,10,0,0),Foreground=Brush(g.Key.Color),Background=Brush("#30343B")});right.Children.Add(p);}
+        foreach(var g in groups.Take(5)){var p=new StackPanel{Margin=new Thickness(0,20,0,0)};var label=new StackPanel{Orientation=Orientation.Horizontal};label.Children.Add(Views.CategoryIcons.View(g.Key.Icon,19));var title=Text($"  {g.Key.Name}     {MainViewModel.Money(g.Sum(x=>x.Cents))}",13);title.VerticalAlignment=VerticalAlignment.Center;label.Children.Add(title);p.Children.Add(label);p.Children.Add(new ProgressBar{Value=100d*g.Sum(x=>x.Cents)/Math.Max(1,vm.Expense),Height=5,Margin=new Thickness(0,10,0,0),Foreground=Brush(g.Key.Color),Background=Brush("#30343B")});right.Children.Add(p);}
         var rc=Card(right);Grid.SetColumn(rc,1);grid.Children.Add(rc);ContentPanel.Children.Add(grid);
         var bar=new DockPanel{Margin=new Thickness(0,0,0,14)};var all=Action("Ver movimientos →",()=>vm.Navigate.Execute("Movimientos"));DockPanel.SetDock(all,Dock.Right);bar.Children.Add(all);bar.Children.Add(Text("Últimos movimientos",20));ContentPanel.Children.Add(bar);
         if(vm.Movements.Count==0) Empty("Tu historia financiera empieza aquí", "Registra un ingreso o un gasto para comenzar.","Registrar movimiento",()=>OpenQuickMovement(this,new RoutedEventArgs()));
@@ -200,13 +200,13 @@ public partial class MainWindow : Window
     private void Categories()
     {
         ContentPanel.Children.Add(Action("＋ Nueva categoría",()=>EditCategory(null),true));var wrap=new WrapPanel{Margin=new Thickness(0,22,0,0)};
-        foreach(var c in vm.Categories){var p=new StackPanel{Width=230};p.Children.Add(Text(c.Icon,28,c.Color));p.Children.Add(Text(c.Name,20));p.Children.Add(Text(c.Type,12,"#9EA5B1"));var actions=new WrapPanel{Margin=new Thickness(0,20,0,0)};actions.Children.Add(Action("Editar",()=>EditCategory(c)));actions.Children.Add(Action("Eliminar",()=>Delete<Category>(c.Id)));p.Children.Add(actions);var card=Card(p);card.Margin=new Thickness(0,0,18,18);wrap.Children.Add(card);}ContentPanel.Children.Add(wrap);
+        foreach(var c in vm.Categories){var p=new StackPanel{Width=230};var glyph=Views.CategoryIcons.View(c.Icon,32);glyph.HorizontalAlignment=HorizontalAlignment.Left;p.Children.Add(glyph);p.Children.Add(Text(c.Name,20));p.Children.Add(Text(c.Type,12,"#9EA5B1"));var actions=new WrapPanel{Margin=new Thickness(0,20,0,0)};actions.Children.Add(Action("Editar",()=>EditCategory(c)));actions.Children.Add(Action("Eliminar",()=>Delete<Category>(c.Id)));p.Children.Add(actions);var card=Card(p);card.Margin=new Thickness(0,0,18,18);wrap.Children.Add(card);}ContentPanel.Children.Add(wrap);
     }
     private void Budgets()
     {
         ContentPanel.Children.Add(Action("＋ Presupuesto mensual",()=>EditBudget(null),true));
         var budgets=vm.Budgets.Where(x=>x.Month==vm.Month).ToList();if(budgets.Count==0){Empty("Planea antes de gastar","Define límites por categoría para el mes seleccionado.","Crear presupuesto",()=>EditBudget(null));return;}
-        foreach(var b in budgets){long spent=vm.Current.Where(x=>x.CategoryId==b.CategoryId).Sum(x=>x.Cents);var p=new StackPanel();p.Children.Add(Text(b.Category.Icon+"  "+b.Category.Name,22));p.Children.Add(Text($"{MainViewModel.Money(spent)} de {MainViewModel.Money(b.LimitCents)}",18));p.Children.Add(new ProgressBar{Value=Math.Min(100,100d*spent/b.LimitCents),Height=7,Margin=new Thickness(0,18,0,14),Foreground=Brush(spent>b.LimitCents?"#FFB4AB":"#D8E0EA"),Background=Brush("#30343B")});p.Children.Add(Text(spent>b.LimitCents?$"Excedido por {MainViewModel.Money(spent-b.LimitCents)}":$"Disponible: {MainViewModel.Money(b.LimitCents-spent)}",13,spent>b.LimitCents?"#FFB4AB":"#9EA5B1"));var bar=new WrapPanel{Margin=new Thickness(0,18,0,0)};bar.Children.Add(Action("Editar",()=>EditBudget(b)));bar.Children.Add(Action("Eliminar",()=>Delete<Budget>(b.Id)));p.Children.Add(bar);var card=Card(p);card.Margin=new Thickness(0,20,0,0);ContentPanel.Children.Add(card);}
+        foreach(var b in budgets){long spent=vm.Current.Where(x=>x.CategoryId==b.CategoryId).Sum(x=>x.Cents);var p=new StackPanel();var heading=new StackPanel{Orientation=Orientation.Horizontal};heading.Children.Add(Views.CategoryIcons.View(b.Category.Icon,24));var headingText=Text("  "+b.Category.Name,22);headingText.VerticalAlignment=VerticalAlignment.Center;heading.Children.Add(headingText);p.Children.Add(heading);p.Children.Add(Text($"{MainViewModel.Money(spent)} de {MainViewModel.Money(b.LimitCents)}",18));p.Children.Add(new ProgressBar{Value=Math.Min(100,100d*spent/b.LimitCents),Height=7,Margin=new Thickness(0,18,0,14),Foreground=Brush(spent>b.LimitCents?"#FFB4AB":"#D8E0EA"),Background=Brush("#30343B")});p.Children.Add(Text(spent>b.LimitCents?$"Excedido por {MainViewModel.Money(spent-b.LimitCents)}":$"Disponible: {MainViewModel.Money(b.LimitCents-spent)}",13,spent>b.LimitCents?"#FFB4AB":"#9EA5B1"));var bar=new WrapPanel{Margin=new Thickness(0,18,0,0)};bar.Children.Add(Action("Editar",()=>EditBudget(b)));bar.Children.Add(Action("Eliminar",()=>Delete<Budget>(b.Id)));p.Children.Add(bar);var card=Card(p);card.Margin=new Thickness(0,20,0,0);ContentPanel.Children.Add(card);}
     }
     private void Recurring()
     {
@@ -230,12 +230,27 @@ public partial class MainWindow : Window
     }
     private void EditRecurring(RecurringRule? rule,string kind)=>Safe(()=>
     {
-        var categories=vm.Categories.Where(x=>x.Type==kind).ToList();if(categories.Count==0)throw new InvalidOperationException($"Crea primero una categoría de {kind.ToLowerInvariant()}.");
+        var categories=vm.Categories.Where(x=>x.Type==kind).ToList();
         var f=new Editor(this,rule==null?"Nuevo "+kind.ToLowerInvariant()+" recurrente":"Editar próximos "+kind.ToLowerInvariant()+"s");
         var concept=f.Input("Concepto",rule?.Description??"");var amount=f.Input("Monto mensual · MXN",((rule?.Cents??0)/100m).ToString("F2",CultureInfo.CurrentCulture));
-        var date=f.Date("Primer vencimiento",rule?.StartDate??DateTime.Today);var account=f.Select("Cuenta habitual",vm.Accounts,rule?.AccountId??vm.Accounts[0].Id,x=>x.Id);var category=f.Select("Categoría",categories,rule?.CategoryId??categories[0].Id,x=>x.Id);
-        f.Save(()=>{var updated=new RecurringRule{Id=rule?.Id??0,Description=Required(concept.Text),Cents=Cents(amount.Text,true),Type=kind,StartDate=date.SelectedDate??throw new InvalidOperationException("Elige la fecha del primer vencimiento."),AccountId=((Account)account.SelectedItem).Id,CategoryId=((Category)category.SelectedItem).Id,Active=true};vm.SaveRecurring(updated);});if(f.ShowDialog()==true)vm.Reload();
+        var date=f.Date("Primer vencimiento",rule?.StartDate??DateTime.Today);var account=f.Select("Cuenta habitual",vm.Accounts,rule?.AccountId??vm.Accounts[0].Id,x=>x.Id);var category=f.Select("Categoría",categories,rule?.CategoryId??categories.FirstOrDefault()?.Id??0,x=>x.Id);
+        f.InlineAction("＋  Crear categoría de "+kind.ToLowerInvariant(),()=>
+        {
+            var created=CreateCategoryFor(f,kind);if(created==null)return;
+            categories=vm.Categories.Where(x=>x.Type==kind).ToList();category.ItemsSource=categories;category.SelectedItem=categories.First(x=>x.Id==created.Id);
+        });
+        f.Save(()=>{if(category.SelectedItem is not Category chosen)throw new InvalidOperationException("Elige o crea una categoría.");var updated=new RecurringRule{Id=rule?.Id??0,Description=Required(concept.Text),Cents=Cents(amount.Text,true),Type=kind,StartDate=date.SelectedDate??throw new InvalidOperationException("Elige la fecha del primer vencimiento."),AccountId=((Account)account.SelectedItem).Id,CategoryId=chosen.Id,Active=true};vm.SaveRecurring(updated);});if(f.ShowDialog()==true)vm.Reload();
     });
+    private Category? CreateCategoryFor(Editor owner,string kind)
+    {
+        Category? created=null;
+        var f=new Editor(owner,"Nueva categoría de "+kind.ToLowerInvariant());
+        var name=f.Input("Nombre","");var icon=f.PickIcon("Icono","✨");
+        var color=f.Select("Color",new[]{"#BAC8D5","#E2E2E6","#9CA3AF","#56FEB7","#B9A5D5","#FFB4AB"},"#BAC8D5",x=>x);
+        f.Save(()=>{created=new Category{Name=Required(name.Text),Type=kind,Icon=icon.SelectedEmoji,Color=(string)color.SelectedItem};vm.Save(created,0);});
+        if(f.ShowDialog()!=true)return null;
+        vm.Reload();return created;
+    }
     private void Reports()
     {
         Metrics();var chart=Card(Chart());chart.Margin=new Thickness(0,0,0,22);ContentPanel.Children.Add(chart);
@@ -327,7 +342,7 @@ public partial class MainWindow : Window
     }
     private void EditCategory(Category? c)
     {
-        var f=new Editor(this,c==null?"Nueva categoría":"Editar categoría");var name=f.Input("Nombre",c?.Name??"");var type=f.Select("Tipo",new[]{"Ingreso","Gasto"},c?.Type??"Gasto",x=>x);if(c!=null&&(vm.Movements.Any(x=>x.CategoryId==c.Id)||vm.Budgets.Any(x=>x.CategoryId==c.Id)))type.IsEnabled=false;var icon=f.Select("Icono",new[]{"◇","◈","⌂","↔","↗","+","◎","☆"},c?.Icon??"◇",x=>x);var color=f.Select("Color",new[]{"#BAC8D5","#E2E2E6","#9CA3AF","#56FEB7","#B9A5D5","#FFB4AB"},c?.Color??"#BAC8D5",x=>x);f.Save(()=>{var entity=new Category{Id=c?.Id??0,Name=Required(name.Text),Type=(string)type.SelectedItem,Icon=(string)icon.SelectedItem,Color=(string)color.SelectedItem};vm.Save(entity,entity.Id);});if(f.ShowDialog()==true)vm.Reload();
+        var f=new Editor(this,c==null?"Nueva categoría":"Editar categoría");var name=f.Input("Nombre",c?.Name??"");var type=f.Select("Tipo",new[]{"Ingreso","Gasto"},c?.Type??"Gasto",x=>x);if(c!=null&&(vm.Movements.Any(x=>x.CategoryId==c.Id)||vm.Budgets.Any(x=>x.CategoryId==c.Id)))type.IsEnabled=false;var icon=f.PickIcon("Icono",c?.Icon??"✨");var color=f.Select("Color",new[]{"#BAC8D5","#E2E2E6","#9CA3AF","#56FEB7","#B9A5D5","#FFB4AB"},c?.Color??"#BAC8D5",x=>x);f.Save(()=>{var entity=new Category{Id=c?.Id??0,Name=Required(name.Text),Type=(string)type.SelectedItem,Icon=icon.SelectedEmoji,Color=(string)color.SelectedItem};vm.Save(entity,entity.Id);});if(f.ShowDialog()==true)vm.Reload();
     }
     private void EditBudget(Budget? b)
     {
@@ -346,12 +361,14 @@ internal sealed class Editor : Window
     private readonly StackPanel panel=new(){Margin=new Thickness(30)};
     public Editor(Window owner,string title)
     {
-        Owner=owner;Title=title;Width=480;SizeToContent=SizeToContent.Height;MaxHeight=Math.Min(800,SystemParameters.WorkArea.Height-60);WindowStyle=WindowStyle.None;WindowStartupLocation=WindowStartupLocation.CenterOwner;ResizeMode=ResizeMode.NoResize;Background=Views.GlassPanel.Gradient(("#FF44404F",0),("#FF191820",.4),("#FF272130",1));Foreground=Brushes.White;Resources=owner.Resources;SetResourceReference(BackgroundProperty,"Surface");SetResourceReference(ForegroundProperty,"TextPrimary");Content=new Border{BorderBrush=Views.GlassPanel.Gradient(("#CFDCCBEF",0),("#45413F49",1)),BorderThickness=new Thickness(1),CornerRadius=new CornerRadius(20),Child=new ScrollViewer{Content=panel,VerticalScrollBarVisibility=ScrollBarVisibility.Auto}};Loaded+=(_,_)=>Views.Motion.Enter(panel);var caption=new TextBlock{Text=title,FontSize=24,Margin=new Thickness(0,0,0,22)};caption.MouseLeftButtonDown+=(_,e)=>{if(e.ButtonState==MouseButtonState.Pressed)DragMove();};panel.Children.Add(caption);
+        Owner=owner;Title=title;Width=480;SizeToContent=SizeToContent.Height;MaxHeight=Math.Min(800,SystemParameters.WorkArea.Height-60);WindowStyle=WindowStyle.None;WindowStartupLocation=WindowStartupLocation.CenterOwner;ResizeMode=ResizeMode.NoResize;Background=Views.GlassPanel.Gradient(("#FF44404F",0),("#FF191820",.4),("#FF272130",1));Foreground=Brushes.White;Resources=owner.Resources;FontFamily=owner.FontFamily;SetResourceReference(BackgroundProperty,"Surface");SetResourceReference(ForegroundProperty,"TextPrimary");Content=new Border{BorderBrush=Views.GlassPanel.Gradient(("#CFDCCBEF",0),("#45413F49",1)),BorderThickness=new Thickness(1),CornerRadius=new CornerRadius(20),ClipToBounds=true,Child=new ScrollViewer{Content=panel,VerticalScrollBarVisibility=ScrollBarVisibility.Auto}};Loaded+=(_,_)=>Views.Motion.Enter(panel);var caption=new TextBlock{Text=title,FontSize=24,Margin=new Thickness(0,0,0,22)};caption.MouseLeftButtonDown+=(_,e)=>{if(e.ButtonState==MouseButtonState.Pressed)DragMove();};panel.Children.Add(caption);
     }
     private void Field(string label,UIElement control){panel.Children.Add(new TextBlock{Text=label,Foreground=(Brush)FindResource("TextSecondary"),Margin=new Thickness(0,15,0,7)});panel.Children.Add(control);}
     public TextBox Input(string label,string value){var input=new TextBox{Text=value,MaxLength=200};Field(label,input);return input;}
     public DatePicker Date(string label,DateTime value){var input=new DatePicker{SelectedDate=value};Field(label,input);return input;}
-    public ComboBox Select<T,K>(string label,IEnumerable<T> items,K key,Func<T,K> selector){var list=items.ToList();var input=new ComboBox{ItemsSource=list,SelectedItem=list.FirstOrDefault(x=>Equals(selector(x),key))};if(input.SelectedIndex<0)input.SelectedIndex=0;Field(label,input);return input;}
+    public ComboBox Select<T,K>(string label,IEnumerable<T> items,K key,Func<T,K> selector){var list=items.ToList();var input=new ComboBox{ItemsSource=list,SelectedItem=list.FirstOrDefault(x=>Equals(selector(x),key)),Tag=System.Windows.Controls.Primitives.PlacementMode.Top,MaxDropDownHeight=205};if(input.SelectedIndex<0&&list.Count>0)input.SelectedIndex=0;Field(label,input);return input;}
+    public Views.CategoryIconPicker PickIcon(string label,string selected){var picker=new Views.CategoryIconPicker(selected);Field(label,picker);return picker;}
+    public void InlineAction(string label,Action action){var button=new Button{Content=label,HorizontalAlignment=HorizontalAlignment.Left,Margin=new Thickness(0,10,0,0),Padding=new Thickness(14,8,14,8)};button.Click+=(_,_)=>{try{action();}catch(Exception ex){Views.GlassDialog.Show(this,ex.Message,"Personal Finance");}};panel.Children.Add(button);}
     public void Save(Action save)
     {
         var error=new TextBlock{Foreground=Brushes.LightSalmon,TextWrapping=TextWrapping.Wrap,Margin=new Thickness(0,16,0,0)};panel.Children.Add(error);var bar=new StackPanel{Orientation=Orientation.Horizontal,HorizontalAlignment=HorizontalAlignment.Right,Margin=new Thickness(0,24,0,0)};var cancel=new Button{Content="Cancelar",IsCancel=true};var ok=new Button{Content="Guardar",IsDefault=true,Background=Views.GlassPanel.Gradient(("#FF887B99",0),("#FF41354F",1)),Foreground=Brushes.White};ok.Click+=(_,_)=>{try{save();DialogResult=true;}catch(Exception ex){error.Text=ex is Microsoft.EntityFrameworkCore.DbUpdateException?"No se pudo guardar. Comprueba que el presupuesto no esté duplicado.":ex.Message;}};bar.Children.Add(cancel);bar.Children.Add(ok);panel.Children.Add(bar);

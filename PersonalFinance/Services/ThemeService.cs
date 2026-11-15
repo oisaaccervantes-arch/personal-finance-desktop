@@ -31,6 +31,7 @@ public static class ThemeService
             resources["TextSecondary"]=new SolidColorBrush(Mix(ink,IsLight?Colors.Gray:Colors.LightGray,.35));
         }
         Set("Surface","#F222202E","#F2F7F4FC");Set("Input","#90181522","#D9FFFFFF");
+        Set("PopupSurface","#FF211E2C","#FFF7F5FB");
         Set("InputEdge","#62566F","#B9ABC9");Set("InputFocus","#AA30263F","#FFFFFFFF");
         Set("Chrome","#E018151F","#E0F3EFF8");Set("Overlay","#75090711","#5C91859E");
         Set("Selected","#902B4C93","#8CB7CFFF");Set("Hover","#405C4779","#407F65A0");

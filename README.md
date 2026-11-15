@@ -18,6 +18,8 @@ Está hecha para Windows y funciona completamente en el equipo: los datos se gua
 
 La interfaz está inspirada en **liquid glass**: superficies translúcidas, reflejos suaves, movimiento de fondo y tarjetas personalizables. La fuente Space Grotesk se incluye con su licencia OFL.
 
+Los iconos de categorías usan gráficos de [Twemoji](https://github.com/twitter/twemoji), incluidos localmente bajo [CC BY 4.0](PersonalFinance/Assets/Twemoji/LICENSE-GRAPHICS). La aplicación no los descarga al ejecutarse.
+
 ## Ejecutar desde el repositorio
 
 Necesitas Windows y el SDK de .NET 10. Desde la carpeta del proyecto:
