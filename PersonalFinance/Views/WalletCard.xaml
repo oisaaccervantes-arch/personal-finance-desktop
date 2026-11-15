@@ -1,0 +1,9 @@
+<UserControl x:Class="PersonalFinance.Views.WalletCard" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:local="clr-namespace:PersonalFinance.Views">
+ <StackPanel>
+  <DockPanel Margin="0,0,0,14"><TextBlock Text="Mis tarjetas" FontSize="20" Foreground="{DynamicResource TextPrimary}"/><TextBlock Text="{Binding CardPosition}" Foreground="{DynamicResource TextSecondary}" FontSize="11" TextAlignment="Right" VerticalAlignment="Center"/></DockPanel>
+  <local:CardFace/>
+  <TextBlock Text="{Binding CardAccountName}" Foreground="{DynamicResource TextPrimary}" FontSize="14" FontWeight="SemiBold" Margin="0,14,0,0"/>
+  <TextBlock Text="{Binding CardHint}" Foreground="{DynamicResource TextSecondary}" FontSize="11" Margin="0,4,0,14"/>
+  <WrapPanel><Button Content="Alternar tarjeta →" Command="{Binding NextCard}" ToolTip="Muestra la siguiente cuenta bancaria o tarjeta registrada"/></WrapPanel>
+ </StackPanel>
+</UserControl>

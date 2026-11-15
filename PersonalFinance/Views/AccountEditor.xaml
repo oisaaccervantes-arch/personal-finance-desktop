@@ -1,0 +1,20 @@
+<Window x:Class="PersonalFinance.Views.AccountEditor" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:local="clr-namespace:PersonalFinance.Views" Title="Personalizar cuenta" Width="860" Height="710" WindowStyle="None" ResizeMode="NoResize" ShowInTaskbar="False" WindowStartupLocation="CenterOwner" Background="{DynamicResource Surface}" Foreground="{DynamicResource TextPrimary}" FontFamily="{DynamicResource AppFont}" FontSize="13">
+ <Border BorderBrush="{DynamicResource GlassEdge}" BorderThickness="1" CornerRadius="24" Padding="28">
+  <DockPanel>
+   <DockPanel DockPanel.Dock="Top" Margin="0,0,0,24" MouseLeftButtonDown="DragHeader"><Button Content="✕" Command="{Binding Cancel}" DockPanel.Dock="Right" Padding="12,7" HorizontalAlignment="Right" VerticalAlignment="Top"/><StackPanel><TextBlock Text="{Binding Title}" FontSize="26" FontWeight="SemiBold"/><TextBlock Text="Tu banco, tu estilo. Vista previa en tiempo real." Foreground="{DynamicResource TextSecondary}" Margin="0,7,0,0"/></StackPanel></DockPanel>
+   <StackPanel DockPanel.Dock="Bottom" Margin="0,16,0,0"><TextBlock Text="{Binding Error}" Foreground="{DynamicResource ErrorText}" TextWrapping="Wrap" Margin="0,0,0,10"/><StackPanel Orientation="Horizontal" HorizontalAlignment="Right"><Button Content="Cancelar" Command="{Binding Cancel}" IsCancel="True"/><Button Content="Guardar cuenta" Command="{Binding Save}" IsDefault="True" Background="{DynamicResource AccentFill}" Foreground="{DynamicResource AccentInk}"/></StackPanel></StackPanel>
+   <ScrollViewer VerticalScrollBarVisibility="Auto"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="1.1*"/><ColumnDefinition Width="30"/><ColumnDefinition Width="1*"/></Grid.ColumnDefinitions>
+    <StackPanel>
+     <TextBlock Text="Nombre de la cuenta" Margin="0,0,0,8"/><TextBox Text="{Binding Name,UpdateSourceTrigger=PropertyChanged}" MaxLength="80"/>
+     <TextBlock Text="Tipo" Margin="0,16,0,8"/><ComboBox ItemsSource="{Binding Types}" SelectedItem="{Binding Type}"/>
+     <TextBlock Text="Banco" Margin="0,16,0,8"/><TextBox Text="{Binding Bank,UpdateSourceTrigger=PropertyChanged}" MaxLength="40"/>
+     <TextBlock Text="Texto de la tarjeta" Margin="0,16,0,8"/><TextBox Text="{Binding CardText,UpdateSourceTrigger=PropertyChanged}" MaxLength="48"/>
+     <TextBlock Text="Saldo inicial · MXN" Margin="0,16,0,8"/><TextBox Text="{Binding Opening,UpdateSourceTrigger=PropertyChanged}" MaxLength="18"/>
+     <TextBlock Text="Para deuda, usa un saldo negativo. Los movimientos existentes se conservan." FontSize="11" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" Margin="0,8,0,12"/>
+    </StackPanel>
+    <StackPanel Grid.Column="2"><TextBlock Text="VISTA PREVIA" FontSize="11" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,14"/><local:CardFace DataContext="{Binding Preview}"/><TextBlock Text="Color de la tarjeta" Margin="0,24,0,12"/><local:ColorPicker Value="{Binding CardColor,Mode=TwoWay}"/><TextBlock Text="El banco y el texto son opcionales. Las tarjetas y cuentas bancarias aparecerán en el dashboard." Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" FontSize="12" Margin="0,18,0,0"/></StackPanel>
+   </Grid></ScrollViewer>
+  </DockPanel>
+ </Border>
+</Window>
+

@@ -1,0 +1,35 @@
+<UserControl x:Class="PersonalFinance.Views.QuickMovementView" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+ <Border CornerRadius="28" BorderBrush="{DynamicResource GlassEdge}" BorderThickness="1" Padding="28" Background="{DynamicResource Surface}">
+  <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="610">
+   <StackPanel Margin="4">
+    <DockPanel Margin="0,0,0,20"><Button DockPanel.Dock="Right" Content="✕" Command="{Binding Close}" Padding="12,7" Margin="8,0,0,0" ToolTip="Cerrar"/><TextBlock Text="REGISTRO RÁPIDO" FontFamily="Consolas" Foreground="{DynamicResource TextSecondary}" FontSize="11" VerticalAlignment="Center"/></DockPanel>
+    <TextBlock Text="{Binding Title}" FontSize="26" Foreground="{DynamicResource TextPrimary}" FontWeight="SemiBold"/>
+    <TextBlock Text="{Binding Subtitle}" Foreground="{DynamicResource TextSecondary}" Margin="0,8,0,24"/>
+    <StackPanel Visibility="{Binding ChoiceVisibility}">
+     <Button Command="{Binding Choose}" CommandParameter="Ingreso" Padding="20" Margin="0,0,0,12" HorizontalContentAlignment="Left"><StackPanel><TextBlock Text="↙  Entrante" FontSize="20" Foreground="{DynamicResource IncomeText}"/><TextBlock Text="Dinero que recibes en una cuenta" Foreground="{DynamicResource TextSecondary}" Margin="0,8,0,0"/></StackPanel></Button>
+     <Button Command="{Binding Choose}" CommandParameter="Gasto" Padding="20" Margin="0" HorizontalContentAlignment="Left"><StackPanel><TextBlock Text="↗  Saliente" FontSize="20" Foreground="{DynamicResource ExpenseText}"/><TextBlock Text="Un pago o gasto desde una cuenta" Foreground="{DynamicResource TextSecondary}" Margin="0,8,0,0"/></StackPanel></Button>
+     <Button Command="{Binding Choose}" CommandParameter="Efectivo" Content="▣  Mover efectivo entre cuentas →" Padding="16,12" Margin="0,18,0,0" HorizontalContentAlignment="Center"/>
+    </StackPanel>
+    <StackPanel Visibility="{Binding CashChoiceVisibility}">
+     <Button Command="{Binding Choose}" CommandParameter="Retiro" Padding="18" Margin="0,0,0,12" HorizontalContentAlignment="Left"><StackPanel><TextBlock Text="▣  Retirar efectivo" FontSize="18"/><TextBlock Text="De una cuenta a tu billetera" Foreground="{DynamicResource TextSecondary}" Margin="0,5,0,0"/></StackPanel></Button>
+     <Button Command="{Binding Choose}" CommandParameter="Deposito" Padding="18" Margin="0" HorizontalContentAlignment="Left"><StackPanel><TextBlock Text="↗  Depositar efectivo" FontSize="18"/><TextBlock Text="De tu billetera a una cuenta" Foreground="{DynamicResource TextSecondary}" Margin="0,5,0,0"/></StackPanel></Button>
+    </StackPanel>
+    <StackPanel Visibility="{Binding MissingVisibility}"><TextBlock Text="Primero configura una cuenta para registrar tus movimientos." Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" Margin="0,0,0,20"/><Button Content="Ir a Cuentas →" Command="{Binding GoAccounts}"/></StackPanel>
+    <StackPanel Visibility="{Binding FormVisibility}">
+     <StackPanel Visibility="{Binding ExpenseVisibility}" Margin="0,0,0,18"><TextBlock Text="¿De qué cuenta?" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,8"/><ComboBox ItemsSource="{Binding Accounts}" SelectedItem="{Binding Account}"/></StackPanel>
+     <StackPanel Visibility="{Binding TransferVisibility}" Margin="0,0,0,18"><TextBlock Text="{Binding TransferAccountLabel}" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,8"/><ComboBox ItemsSource="{Binding BankAccounts}" SelectedItem="{Binding Account}"/><TextBlock Text="{Binding CashTransferHint}" Foreground="{DynamicResource TextSecondary}" Margin="0,8,0,0"/></StackPanel>
+     <TextBlock Text="Concepto" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,8"/>
+     <TextBox Text="{Binding Concept,UpdateSourceTrigger=PropertyChanged}" MaxLength="200" AutomationProperties.Name="Concepto"/>
+     <TextBlock Text="Monto · MXN" Foreground="{DynamicResource TextSecondary}" Margin="0,18,0,8"/>
+     <TextBox Text="{Binding Amount,UpdateSourceTrigger=PropertyChanged}" MaxLength="18" FontSize="24" AutomationProperties.Name="Monto"/>
+     <StackPanel Visibility="{Binding IncomeVisibility}" Margin="0,18,0,0"><TextBlock Text="¿A qué cuenta?" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,8"/><ComboBox ItemsSource="{Binding Accounts}" SelectedItem="{Binding Account}"/></StackPanel>
+     <StackPanel Visibility="{Binding ExpenseVisibility}" Margin="0,18,0,0"><TextBlock Text="Categoría" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,8"/><ComboBox ItemsSource="{Binding Categories}" SelectedItem="{Binding Category}"/></StackPanel>
+     <Border Visibility="{Binding ErrorVisibility}" Background="#30F3A6B5" CornerRadius="10" Padding="12" Margin="0,16,0,0"><TextBlock Text="{Binding Error}" TextWrapping="Wrap" Foreground="{DynamicResource ErrorText}"/></Border>
+     <Button Content="{Binding SaveLabel}" Command="{Binding Save}" Background="{DynamicResource AccentFill}" Foreground="{DynamicResource AccentInk}" Margin="0,24,0,0" Padding="18,15" HorizontalContentAlignment="Center"/>
+    </StackPanel>
+    <Button Content="← Cambiar tipo" Visibility="{Binding StepVisibility}" Command="{Binding Back}" Margin="0,16,0,0" HorizontalAlignment="Left" Padding="12,8"/>
+   </StackPanel>
+  </ScrollViewer>
+ </Border>
+</UserControl>
+
