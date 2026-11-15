@@ -84,7 +84,7 @@ public sealed class FinanceStore
         settings.ThemeName=value.ThemeName;settings.Mode=value.Mode;settings.BackgroundColor=value.BackgroundColor.ToUpperInvariant();settings.TextColor=value.TextColor.ToUpperInvariant();settings.AccentColor=value.AccentColor.ToUpperInvariant();settings.FontChoice=value.FontChoice;db.SaveChanges();
     }
     public static bool ValidColor(string value)=>System.Text.RegularExpressions.Regex.IsMatch(value??"",@"^#[0-9a-fA-F]{6}$");
-    public void QuickMovement(bool incoming,string concept,long cents,int accountId,int? categoryId)
+    public void QuickMovement(bool incoming,string concept,long cents,int accountId,int? categoryId,DateTime? date=null)
     {
         if(string.IsNullOrWhiteSpace(concept)||concept.Trim().Length>200||cents<=0||cents>10000000000000)
             throw new InvalidOperationException("Escribe un concepto y un importe positivo válido.");
@@ -100,7 +100,7 @@ public sealed class FinanceStore
             category=db.Categories.FirstOrDefault(x=>x.Name==name&&x.Type==type)??new Category{Name=name,Type=type,Icon=incoming?"cash":"stars"};
             if(category.Id==0){db.Categories.Add(category);db.SaveChanges();}
         }
-        db.Movements.Add(new Movement{Description=concept.Trim(),Cents=cents,Date=DateTime.Today,AccountId=accountId,CategoryId=category.Id});
+        db.Movements.Add(new Movement{Description=concept.Trim(),Cents=cents,Date=(date??DateTime.Today).Date,AccountId=accountId,CategoryId=category.Id});
         db.SaveChanges();transaction.Commit();
     }
     public void Save<T>(T entity, int id) where T:class

@@ -19,16 +19,18 @@ public sealed class QuickMovementViewModel : INotifyPropertyChanged
     private bool? incoming;
     private bool transfer,withdrawal,cashChoice;
     private string concept="",amount="",error="";
+    private DateTime? date=DateTime.Today;
     private Account? account;
     private Category? category;
     private bool saving;
     public string Concept {get=>concept;set{concept=value;Notify();}}
     public string Amount {get=>amount;set{amount=value;Notify();}}
+    public DateTime? Date {get=>date;set{date=value;Notify();}}
     public Account? Account {get=>account;set{account=value;Notify();}}
     public Category? Category {get=>category;set{category=value;Notify();}}
     public string Error=>error;
     public string Title=>cashChoice?"Mover efectivo":incoming==null&&!transfer?"¿Qué vas a registrar?":transfer?(withdrawal?"Retirar efectivo":"Depositar efectivo"):incoming==true?"Dinero entrante":"Dinero saliente";
-    public string Subtitle=>cashChoice?"Entre tu billetera y una cuenta.":incoming==null&&!transfer?"Elige el tipo de movimiento para continuar.":"Se registrará hoy · MXN";
+    public string Subtitle=>cashChoice?"Entre tu billetera y una cuenta.":incoming==null&&!transfer?"Elige el tipo de movimiento para continuar.":"Elige la fecha del movimiento · MXN";
     public string AccountLabel=>incoming==true?"¿A qué cuenta?":"¿De qué cuenta?";
     public string SaveLabel=>transfer?(withdrawal?"Registrar retiro":"Registrar depósito"):incoming==true?"Registrar ingreso":"Registrar gasto";
     public string TransferAccountLabel=>withdrawal?"¿De qué cuenta sale el dinero?":"¿A qué cuenta llegará el dinero?";
@@ -65,6 +67,7 @@ public sealed class QuickMovementViewModel : INotifyPropertyChanged
         if(Account==null)error="Selecciona la cuenta del movimiento.";
         else if(string.IsNullOrWhiteSpace(Concept)||Concept.Trim().Length>200)error="Escribe un concepto de hasta 200 caracteres.";
         else if(!decimal.TryParse(Amount,NumberStyles.AllowDecimalPoint|NumberStyles.AllowLeadingWhite|NumberStyles.AllowTrailingWhite,CultureInfo.CurrentCulture,out var value)||value<=0||value>100000000000m||decimal.Round(value,2)!=value)error="Escribe un monto positivo con hasta dos decimales, sin separadores de miles.";
+        else if(Date==null)error="Selecciona la fecha del movimiento.";
         else if(incoming==false&&!transfer&&Category==null)error="Selecciona una categoría o elige Otro.";
         else
         {
@@ -74,9 +77,9 @@ public sealed class QuickMovementViewModel : INotifyPropertyChanged
                 if(transfer)
                 {
                     var cash=Accounts.Single(x=>x.Type=="Efectivo");
-                    store.TransferFunds(withdrawal?Account.Id:cash.Id,withdrawal?cash.Id:Account.Id,checked((long)(value*100)),Concept);
+                    store.TransferFunds(withdrawal?Account.Id:cash.Id,withdrawal?cash.Id:Account.Id,checked((long)(value*100)),Concept,Date);
                 }
-                else store.QuickMovement(incoming!.Value,Concept,checked((long)(value*100)),Account.Id,incoming.Value?null:Category!.Id);
+                else store.QuickMovement(incoming!.Value,Concept,checked((long)(value*100)),Account.Id,incoming.Value?null:Category!.Id,Date);
                 Saved?.Invoke();
             }
             catch(Exception){error="No se pudo guardar. Comprueba la cuenta e inténtalo de nuevo.";}

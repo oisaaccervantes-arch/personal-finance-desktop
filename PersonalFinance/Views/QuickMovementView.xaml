@@ -22,6 +22,8 @@
      <TextBox Text="{Binding Concept,UpdateSourceTrigger=PropertyChanged}" MaxLength="200" AutomationProperties.Name="Concepto"/>
      <TextBlock Text="Monto · MXN" Foreground="{DynamicResource TextSecondary}" Margin="0,18,0,8"/>
      <TextBox Text="{Binding Amount,UpdateSourceTrigger=PropertyChanged}" MaxLength="18" FontSize="24" AutomationProperties.Name="Monto"/>
+     <TextBlock Text="Fecha" Foreground="{DynamicResource TextSecondary}" Margin="0,18,0,8"/>
+     <DatePicker SelectedDate="{Binding Date,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Fecha del movimiento"/>
      <StackPanel Visibility="{Binding IncomeVisibility}" Margin="0,18,0,0"><TextBlock Text="¿A qué cuenta?" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,8"/><ComboBox ItemsSource="{Binding Accounts}" SelectedItem="{Binding Account}"/></StackPanel>
      <StackPanel Visibility="{Binding ExpenseVisibility}" Margin="0,18,0,0"><TextBlock Text="Categoría" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,8"/><ComboBox ItemsSource="{Binding Categories}" SelectedItem="{Binding Category}"/></StackPanel>
      <Border Visibility="{Binding ErrorVisibility}" Background="#30F3A6B5" CornerRadius="10" Padding="12" Margin="0,16,0,0"><TextBlock Text="{Binding Error}" TextWrapping="Wrap" Foreground="{DynamicResource ErrorText}"/></Border>
