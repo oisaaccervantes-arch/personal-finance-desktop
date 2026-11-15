@@ -11,3 +11,4 @@ test-results/
 *.bak
 .vs/
 *.user
+Reference/

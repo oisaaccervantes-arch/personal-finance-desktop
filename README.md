@@ -67,7 +67,7 @@ dotnet run --project PersonalFinance.Tests -c Release
 dotnet run --project PersonalFinance.Tests -c Release -- --scroll
 ```
 
-Las pruebas usan una base temporal independiente. El código de la app está en `PersonalFinance/`; las pruebas, en `PersonalFinance.Tests/`. Las referencias visuales originales se conservan en `Reference/`.
+Las pruebas usan una base temporal independiente. El código de la app está en `PersonalFinance/` y las pruebas en `PersonalFinance.Tests/`. Los archivos de referencia de Stitch se conservan solo en el equipo de desarrollo y no forman parte del repositorio.
 
 ## Estado del proyecto
 
