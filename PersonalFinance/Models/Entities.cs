@@ -65,6 +65,9 @@ public class RecurringRule
     public int CategoryId { get; set; }
     public Category Category { get; set; } = null!;
     public DateTime StartDate { get; set; } = DateTime.Today;
+    public string Frequency { get; set; } = "Mensual";
+    public int DayOfMonth { get; set; }
+    public DateTime EffectiveFrom { get; set; }
     public bool Active { get; set; } = true;
 }
 public class Budget

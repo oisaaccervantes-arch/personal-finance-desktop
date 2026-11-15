@@ -227,27 +227,33 @@ public partial class MainWindow : Window
             var cell=new StackPanel{Margin=new Thickness(0,4,16,14)};cell.Children.Add(Text(date.ToString("MMMM yyyy",CultureInfo.GetCultureInfo("es-MX")),12,"#9EA5B1"));var amount=Text(MainViewModel.Money(vm.ProjectedBalance(date)),23);amount.FontWeight=FontWeights.SemiBold;amount.Margin=new Thickness(0,5,0,0);cell.Children.Add(amount);months.Children.Add(cell);
         }
         projection.Children.Add(months);var projectionCard=Card(projection);projectionCard.Margin=new Thickness(0,0,0,24);ContentPanel.Children.Add(projectionCard);
-        ContentPanel.Children.Add(Text("Calendario mensual",21));
+        ContentPanel.Children.Add(Text("Movimientos programados",21));
         if(vm.RecurringRules.Count==0){var empty=Text("Todavía no hay cobros ni pagos recurrentes. Agrega uno para proyectar tus saldos.",14,"#9EA5B1");empty.Margin=new Thickness(0,18,0,0);ContentPanel.Children.Add(Card(empty));return;}
-        foreach(var rule in vm.RecurringRules.OrderBy(x=>x.Active?0:1).ThenBy(x=>x.StartDate.Day))
+        foreach(var rule in vm.RecurringRules.OrderBy(x=>x.Active?0:1).ThenBy(x=>x.StartDate))
         {
             var row=new DockPanel();var amount=Text((rule.Type=="Ingreso"?"+":"−")+MainViewModel.Money(rule.Cents),20);amount.FontWeight=FontWeights.SemiBold;amount.SetResourceReference(TextBlock.ForegroundProperty,rule.Type=="Ingreso"?"IncomeText":"ExpenseText");DockPanel.SetDock(amount,Dock.Right);row.Children.Add(amount);
-            var detail=new StackPanel();detail.Children.Add(Text(rule.Description,18));detail.Children.Add(Text($"{rule.Type} · {rule.Account.Name} · {rule.Category.Name} · día {rule.StartDate.Day} de cada mes · {(rule.Active?"Activo":"Pausado")}",12,"#9EA5B1"));var actions=new WrapPanel{Margin=new Thickness(0,14,0,0)};actions.Children.Add(Action("Editar próximos",()=>EditRecurring(rule,rule.Type)));actions.Children.Add(Action(rule.Active?"Pausar":"Reanudar",()=>{var changed=new RecurringRule{Id=rule.Id,Description=rule.Description,Cents=rule.Cents,Type=rule.Type,AccountId=rule.AccountId,CategoryId=rule.CategoryId,StartDate=rule.Active?rule.StartDate:DateTime.Today,Active=!rule.Active};vm.SaveRecurring(changed);vm.Reload();}));detail.Children.Add(actions);row.Children.Add(detail);var card=Card(row);card.Margin=new Thickness(0,12,0,0);ContentPanel.Children.Add(card);
+            var schedule=rule.Frequency switch {"Quincenal"=>"15 y último día de cada mes","Catorcenal"=>$"cada 14 días desde {rule.StartDate:dd/MM/yyyy}",_=>$"día {rule.DayOfMonth} de cada mes"};
+            var detail=new StackPanel();detail.Children.Add(Text(rule.Description,18));detail.Children.Add(Text($"{rule.Type} · {rule.Account.Name} · {rule.Category.Name} · {schedule} · {(rule.Active?"Activo":"Pausado")}",12,"#9EA5B1"));var actions=new WrapPanel{Margin=new Thickness(0,14,0,0)};actions.Children.Add(Action("Editar próximos",()=>EditRecurring(rule,rule.Type)));actions.Children.Add(Action(rule.Active?"Pausar":"Reanudar",()=>{var changed=new RecurringRule{Id=rule.Id,Description=rule.Description,Cents=rule.Cents,Type=rule.Type,AccountId=rule.AccountId,CategoryId=rule.CategoryId,StartDate=rule.StartDate,Frequency=rule.Frequency,DayOfMonth=rule.DayOfMonth,Active=!rule.Active};vm.SaveRecurring(changed);vm.Reload();}));detail.Children.Add(actions);row.Children.Add(detail);var card=Card(row);card.Margin=new Thickness(0,12,0,0);ContentPanel.Children.Add(card);
         }
-        var hint=Text("Cada vencimiento se registra al abrir la aplicación. Un movimiento ya realizado se puede editar desde Movimientos, incluso si se pagó con otra cuenta.",12,"#9EA5B1");hint.Margin=new Thickness(0,20,0,0);ContentPanel.Children.Add(hint);
+        var hint=Text("Cada vencimiento se registra al abrir la aplicación. Los cambios de frecuencia afectan solo a futuros vencimientos; los movimientos anteriores se pueden editar desde Movimientos, incluso si se pagaron con otra cuenta.",12,"#9EA5B1");hint.Margin=new Thickness(0,20,0,0);ContentPanel.Children.Add(hint);
     }
     private void EditRecurring(RecurringRule? rule,string kind)=>Safe(()=>
     {
         var categories=vm.Categories.Where(x=>x.Type==kind).ToList();
         var f=new Editor(this,rule==null?"Nuevo "+kind.ToLowerInvariant()+" recurrente":"Editar próximos "+kind.ToLowerInvariant()+"s");
-        var concept=f.Input("Concepto",rule?.Description??"");var amount=f.Input("Monto mensual · MXN",((rule?.Cents??0)/100m).ToString("F2",CultureInfo.CurrentCulture));
-        var date=f.Date("Primer vencimiento",rule?.StartDate??DateTime.Today);var account=f.Select("Cuenta habitual",vm.Accounts,rule?.AccountId??vm.Accounts[0].Id,x=>x.Id);var category=f.Select("Categoría",categories,rule?.CategoryId??categories.FirstOrDefault()?.Id??0,x=>x.Id);
+        var concept=f.Input("Concepto",rule?.Description??"");var amount=f.Input("Monto por vencimiento · MXN",((rule?.Cents??0)/100m).ToString("F2",CultureInfo.CurrentCulture));
+        var frequency=f.Select("Frecuencia",new[]{"Mensual","Quincenal","Catorcenal"},rule?.Frequency??"Mensual",x=>x);
+        var day=f.Select("Día de cada mes",Enumerable.Range(1,31),rule is {DayOfMonth:>0}?rule.DayOfMonth:rule?.StartDate.Day??DateTime.Today.Day,x=>x);
+        var frequencyHint=f.Note("");
+        void UpdateFrequency(){var selected=(string?)frequency.SelectedItem;f.SetFieldVisible(day,selected=="Mensual");frequencyHint.Text=selected switch {"Quincenal"=>"Se cobrará o pagará el día 15 y el último día de cada mes.","Catorcenal"=>"Se repetirá cada 14 días a partir de la fecha de inicio.",_=>"Si el mes tiene menos días, se usará su último día."};}
+        frequency.SelectionChanged+=(_,_)=>UpdateFrequency();UpdateFrequency();
+        var date=f.Date("Fecha de inicio",rule?.StartDate??DateTime.Today);var account=f.Select("Cuenta habitual",vm.Accounts,rule?.AccountId??vm.Accounts[0].Id,x=>x.Id);var category=f.Select("Categoría",categories,rule?.CategoryId??categories.FirstOrDefault()?.Id??0,x=>x.Id);
         f.InlineAction("＋  Crear categoría de "+kind.ToLowerInvariant(),()=>
         {
             var created=CreateCategoryFor(f,kind);if(created==null)return;
             categories=vm.Categories.Where(x=>x.Type==kind).ToList();category.ItemsSource=categories;category.SelectedItem=categories.First(x=>x.Id==created.Id);
         });
-        f.Save(()=>{if(category.SelectedItem is not Category chosen)throw new InvalidOperationException("Elige o crea una categoría.");var updated=new RecurringRule{Id=rule?.Id??0,Description=Required(concept.Text),Cents=Cents(amount.Text,true),Type=kind,StartDate=date.SelectedDate??throw new InvalidOperationException("Elige la fecha del primer vencimiento."),AccountId=((Account)account.SelectedItem).Id,CategoryId=chosen.Id,Active=true};vm.SaveRecurring(updated);});if(f.ShowDialog()==true)vm.Reload();
+        f.Save(()=>{if(category.SelectedItem is not Category chosen)throw new InvalidOperationException("Elige o crea una categoría.");var updated=new RecurringRule{Id=rule?.Id??0,Description=Required(concept.Text),Cents=Cents(amount.Text,true),Type=kind,StartDate=date.SelectedDate??throw new InvalidOperationException("Elige la fecha de inicio."),Frequency=(string)frequency.SelectedItem,DayOfMonth=(int)day.SelectedItem,AccountId=((Account)account.SelectedItem).Id,CategoryId=chosen.Id,Active=rule?.Active??true};vm.SaveRecurring(updated);});if(f.ShowDialog()==true)vm.Reload();
     });
     private Category? CreateCategoryFor(Editor owner,string kind)
     {
@@ -393,6 +399,8 @@ internal sealed class Editor : Window
     public TextBox Input(string label,string value){var input=new TextBox{Text=value,MaxLength=200};Field(label,input);return input;}
     public DatePicker Date(string label,DateTime value){var input=new DatePicker{SelectedDate=value};Field(label,input);return input;}
     public ComboBox Select<T,K>(string label,IEnumerable<T> items,K key,Func<T,K> selector){var list=items.ToList();var input=new ComboBox{ItemsSource=list,SelectedItem=list.FirstOrDefault(x=>Equals(selector(x),key)),Tag=System.Windows.Controls.Primitives.PlacementMode.Top,MaxDropDownHeight=205};if(input.SelectedIndex<0&&list.Count>0)input.SelectedIndex=0;Field(label,input);return input;}
+    public TextBlock Note(string message){var note=new TextBlock{Text=message,TextWrapping=TextWrapping.Wrap,Foreground=(Brush)FindResource("TextSecondary"),FontSize=12,Margin=new Thickness(0,8,0,0)};panel.Children.Add(note);return note;}
+    public void SetFieldVisible(UIElement control,bool visible){int index=panel.Children.IndexOf(control);if(index<1)return;var visibility=visible?Visibility.Visible:Visibility.Collapsed;panel.Children[index-1].Visibility=visibility;control.Visibility=visibility;}
     public Views.CategoryIconPicker PickIcon(string label,string selected){var picker=new Views.CategoryIconPicker(selected);Field(label,picker);return picker;}
     public void InlineAction(string label,Action action){var button=new Button{Content=label,HorizontalAlignment=HorizontalAlignment.Left,Margin=new Thickness(0,10,0,0),Padding=new Thickness(14,8,14,8)};button.Click+=(_,_)=>{try{action();}catch(Exception ex){Views.GlassDialog.Show(this,ex.Message,"Personal Finance");}};panel.Children.Add(button);}
     public void Save(Action save)

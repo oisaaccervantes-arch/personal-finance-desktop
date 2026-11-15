@@ -37,12 +37,34 @@ public sealed class FinanceStore
     public static IEnumerable<DateTime> Occurrences(RecurringRule rule,DateTime through)
     {
         var start=rule.StartDate.Date;
+        var effective=rule.EffectiveFrom==default?start:rule.EffectiveFrom.Date;
+        if(start>through.Date||effective>through.Date)yield break;
+        if(rule.Frequency=="Catorcenal")
+        {
+            for(var date=start;date<=through.Date;date=date.AddDays(14))
+            {
+                if(date>=effective)yield return date;
+                if(date>DateTime.MaxValue.AddDays(-14))yield break;
+            }
+            yield break;
+        }
         for(int month=0;month<=2400;month++)
         {
             var first=new DateTime(start.Year,start.Month,1).AddMonths(month);
-            var date=new DateTime(first.Year,first.Month,Math.Min(start.Day,DateTime.DaysInMonth(first.Year,first.Month)));
-            if(date>through.Date)yield break;
-            if(date>=start)yield return date;
+            if(first>through.Date)yield break;
+            if(rule.Frequency=="Quincenal")
+            {
+                var middle=first.AddDays(14);
+                var last=first.AddMonths(1).AddDays(-1);
+                if(middle>=start&&middle>=effective&&middle<=through.Date)yield return middle;
+                if(last>=start&&last>=effective&&last<=through.Date)yield return last;
+            }
+            else
+            {
+                int day=rule.DayOfMonth is >=1 and <=31?rule.DayOfMonth:start.Day;
+                var date=new DateTime(first.Year,first.Month,Math.Min(day,DateTime.DaysInMonth(first.Year,first.Month)));
+                if(date>=start&&date>=effective&&date<=through.Date)yield return date;
+            }
         }
     }
     public void ProcessDue(DateTime? today=null)
@@ -57,9 +79,24 @@ public sealed class FinanceStore
     }
     public void SaveRecurring(RecurringRule rule)
     {
-        if(rule.Description.Trim().Length is <1 or >200||rule.Cents is <=0 or >10000000000000||rule.Type is not ("Ingreso" or "Gasto")||rule.StartDate.Date<DateTime.Today.AddYears(-10)||rule.StartDate.Date>DateTime.Today.AddYears(10))throw new InvalidOperationException("Revisa concepto, monto y fecha de inicio de la recurrencia.");
+        if(rule.Description.Trim().Length is <1 or >200||rule.Cents is <=0 or >10000000000000||rule.Type is not ("Ingreso" or "Gasto")||rule.Frequency is not ("Mensual" or "Quincenal" or "Catorcenal")||rule.StartDate.Date<DateTime.Today.AddYears(-10)||rule.StartDate.Date>DateTime.Today.AddYears(10))throw new InvalidOperationException("Revisa concepto, monto, frecuencia y fecha de inicio de la recurrencia.");
         using var db=new FinanceDb();if(!db.Accounts.Any(x=>x.Id==rule.AccountId)||!db.Categories.Any(x=>x.Id==rule.CategoryId&&x.Type==rule.Type))throw new InvalidOperationException("Selecciona una cuenta y categoría del mismo tipo.");
         rule.Description=rule.Description.Trim();rule.StartDate=rule.StartDate.Date;
+        if(rule.Frequency=="Mensual")
+        {
+            if(rule.DayOfMonth==0)rule.DayOfMonth=rule.StartDate.Day;
+            if(rule.DayOfMonth is <1 or >31)throw new InvalidOperationException("El día mensual debe estar entre 1 y 31.");
+        }
+        else rule.DayOfMonth=0;
+        var previous=rule.Id==0?null:db.RecurringRules.AsNoTracking().FirstOrDefault(x=>x.Id==rule.Id);
+        if(previous==null)rule.EffectiveFrom=rule.StartDate;
+        else
+        {
+            bool scheduleChanged=previous.StartDate.Date!=rule.StartDate||previous.Frequency!=rule.Frequency||previous.DayOfMonth!=rule.DayOfMonth;
+            if(scheduleChanged&&db.Movements.Any(x=>x.RecurringRuleId==rule.Id))rule.EffectiveFrom=rule.StartDate>DateTime.Today?rule.StartDate:DateTime.Today.AddDays(1);
+            else if(!previous.Active&&rule.Active)rule.EffectiveFrom=rule.StartDate>DateTime.Today?rule.StartDate:DateTime.Today;
+            else rule.EffectiveFrom=previous.EffectiveFrom==default?previous.StartDate:previous.EffectiveFrom;
+        }
         if(rule.Id==0)db.RecurringRules.Add(rule);else db.RecurringRules.Update(rule);db.SaveChanges();ProcessDue();
     }
     public void DeleteRecurring(int id){using var db=new FinanceDb();var rule=db.RecurringRules.Find(id);if(rule==null)return;rule.Active=false;db.SaveChanges();}

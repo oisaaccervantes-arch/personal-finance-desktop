@@ -11,7 +11,7 @@ Está hecha para Windows y funciona completamente en el equipo: los datos se gua
 - Registrar, buscar, filtrar, editar y eliminar ingresos o gastos.
 - Retirar efectivo de una cuenta o depositarlo en ella. Estas operaciones mueven saldo entre cuentas sin contarse como ingresos o gastos.
 - Organizar movimientos con categorías y presupuestos mensuales.
-- Programar cobros y pagos mensuales. Al abrir la app se registran los vencimientos pendientes una sola vez. Un pago ya registrado se puede editar, incluso para cambiar la cuenta con la que se pagó.
+- Programar cobros y pagos mensuales en un día elegido, quincenales (día 15 y último del mes) o catorcenales (cada 14 días desde una fecha inicial). Al abrir la app se registran los vencimientos pendientes una sola vez. Un pago ya registrado se puede editar, incluso para cambiar la cuenta con la que se pagó.
 - Consultar una proyección de saldo para los próximos seis cierres de mes, basada en las recurrencias activas.
 - Revisar reportes, exportar movimientos a CSV y crear o restaurar respaldos locales.
 - Elegir un tema o personalizar la apariencia.

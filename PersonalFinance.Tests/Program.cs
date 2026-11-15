@@ -73,6 +73,14 @@ vm.Reload();var totalBefore=vm.Balance;var cardBefore=vm.AccountBalance(styled);
 Check(vm.Balance==totalBefore&&vm.AccountBalance(styled)==cardBefore-2500&&vm.AccountBalance(cash)==2500,"Retiro mueve saldo sin cambiar el patrimonio");
 store.TransferFunds(cash.Id,debitCard.Id,1000,"Depósito de efectivo");vm.Reload();Check(vm.AccountBalance(cash)==1500&&vm.AccountBalance(styled)==cardBefore-1500,"Depósito devuelve saldo a la cuenta elegida");
 bool cashOverdraw=false;try{store.TransferFunds(cash.Id,debitCard.Id,1600,"Depósito imposible");}catch(InvalidOperationException){cashOverdraw=true;}Check(cashOverdraw&&store.Transfers().Count==2,"No se puede depositar más efectivo del disponible");
+var day31=new RecurringRule{Frequency="Mensual",StartDate=new DateTime(2027,1,1),DayOfMonth=31};
+Check(FinanceStore.Occurrences(day31,new DateTime(2027,4,30)).SequenceEqual(new[]{new DateTime(2027,1,31),new DateTime(2027,2,28),new DateTime(2027,3,31),new DateTime(2027,4,30)}),"El día 31 usa el último día en meses cortos");
+var leapDay=new RecurringRule{Frequency="Mensual",StartDate=new DateTime(2028,1,1),DayOfMonth=31};
+Check(FinanceStore.Occurrences(leapDay,new DateTime(2028,2,29)).Last()==new DateTime(2028,2,29),"El día mensual respeta febrero bisiesto");
+var halfMonth=new RecurringRule{Frequency="Quincenal",StartDate=new DateTime(2027,1,20)};
+Check(FinanceStore.Occurrences(halfMonth,new DateTime(2027,3,1)).SequenceEqual(new[]{new DateTime(2027,1,31),new DateTime(2027,2,15),new DateTime(2027,2,28)}),"Quincenal vence el 15 y último día del mes desde la fecha inicial");
+var fourteenDays=new RecurringRule{Frequency="Catorcenal",StartDate=new DateTime(2027,1,10)};
+Check(FinanceStore.Occurrences(fourteenDays,new DateTime(2027,2,28)).SequenceEqual(new[]{new DateTime(2027,1,10),new DateTime(2027,1,24),new DateTime(2027,2,7),new DateTime(2027,2,21)}),"Catorcenal mantiene intervalos exactos de 14 días");
 var recurring=new RecurringRule{Description="Pago mensual",Type="Gasto",Cents=1200,StartDate=DateTime.Today.AddMonths(-1),AccountId=debitCard.Id,CategoryId=exp.Id};store.SaveRecurring(recurring);vm.Reload();
 var posted=store.Movements().Where(x=>x.RecurringRuleId==recurring.Id).ToList();Check(posted.Count==2,"Se registran las fechas recurrentes vencidas");
 store.ProcessDue();Check(store.Movements().Count(x=>x.RecurringRuleId==recurring.Id)==2,"Reabrir no duplica vencimientos");
@@ -89,7 +97,28 @@ Exception? iconLoadError=null;var iconThread=new Thread(()=>{try{_ = new System.
 if(iconLoadError!=null)Console.WriteLine(iconLoadError);
 Check(iconLoadError==null,"Los iconos vectoriales locales se cargan en WPF");
 var quickCash=new QuickMovementViewModel(store.Accounts(),store.Categories());quickCash.Choose.Execute("Efectivo");quickCash.Choose.Execute("Retiro");quickCash.Account=store.Accounts().Single(x=>x.Id==debitCard.Id);quickCash.Amount="10";quickCash.Date=DateTime.Today.AddDays(-2);var cashBefore=vm.AccountBalance(cash);quickCash.Save.Execute(null);vm.Reload();Check(vm.AccountBalance(cash)==cashBefore+1000&&quickCash.Error.Length==0&&store.Transfers().Single(x=>x.Description=="Retiro de efectivo"&&x.Cents==1000).Date==quickCash.Date,"El registro rápido retira efectivo en la fecha elegida");
+var projectionBeforeFrequencies=vm.ProjectedBalance(future);
+var chosenDay=new RecurringRule{Description="Cobro día elegido",Type="Ingreso",Cents=400,Frequency="Mensual",DayOfMonth=25,StartDate=new DateTime(DateTime.Today.Year,DateTime.Today.Month,1).AddMonths(1),AccountId=debitCard.Id,CategoryId=inc.Id};store.SaveRecurring(chosenDay);
+Check(store.RecurringRules().Single(x=>x.Id==chosenDay.Id).DayOfMonth==25&&FinanceStore.Occurrences(chosenDay,chosenDay.StartDate.AddMonths(1)).First().Day==25,"El día mensual elegido se guarda aunque difiera del día de inicio");
+bool invalidDay=false;try{store.SaveRecurring(new RecurringRule{Description="Día inválido",Type="Gasto",Cents=100,Frequency="Mensual",DayOfMonth=32,StartDate=DateTime.Today.AddMonths(1),AccountId=debitCard.Id,CategoryId=exp.Id});}catch(InvalidOperationException){invalidDay=true;}Check(invalidDay,"No se guarda un día mensual fuera del calendario");
+var twoPays=new RecurringRule{Description="Dos pagos al mes",Type="Gasto",Cents=300,Frequency="Quincenal",StartDate=DateTime.Today.AddDays(1),AccountId=debitCard.Id,CategoryId=exp.Id};store.SaveRecurring(twoPays);
+var fourteenIncome=new RecurringRule{Description="Cobro cada catorce días",Type="Ingreso",Cents=700,Frequency="Catorcenal",StartDate=DateTime.Today.AddDays(1),AccountId=debitCard.Id,CategoryId=inc.Id};store.SaveRecurring(fourteenIncome);vm.Reload();
+long newFrequencyDelta=FinanceStore.Occurrences(chosenDay,future).Count()*400+FinanceStore.Occurrences(fourteenIncome,future).Count()*700-FinanceStore.Occurrences(twoPays,future).Count()*300;
+Check(vm.ProjectedBalance(future)==projectionBeforeFrequencies+newFrequencyDelta&&store.RecurringRules().Any(x=>x.Id==twoPays.Id&&x.Frequency=="Quincenal")&&store.RecurringRules().Any(x=>x.Id==fourteenIncome.Id&&x.Frequency=="Catorcenal"),"La proyección y la base incluyen ingresos catorcenales y gastos quincenales");
+_ = new FinanceStore();Check(store.RecurringRules().Where(x=>x.Id==twoPays.Id||x.Id==fourteenIncome.Id).All(x=>x.DayOfMonth==0&&x.EffectiveFrom==x.StartDate),"Reabrir conserva las frecuencias no mensuales y su fecha inicial");
+store.ProcessDue(future);int twoPaysCount=store.Movements().Count(x=>x.RecurringRuleId==twoPays.Id),fourteenIncomeCount=store.Movements().Count(x=>x.RecurringRuleId==fourteenIncome.Id);store.ProcessDue(future);
+Check(twoPaysCount==FinanceStore.Occurrences(twoPays,future).Count()&&fourteenIncomeCount==FinanceStore.Occurrences(fourteenIncome,future).Count()&&store.Movements().Count(x=>x.RecurringRuleId==twoPays.Id)==twoPaysCount&&store.Movements().Count(x=>x.RecurringRuleId==fourteenIncome.Id)==fourteenIncomeCount,"Los vencimientos nuevos se registran una sola vez");
+int oldMonthlyCount=store.Movements().Count(x=>x.RecurringRuleId==recurring.Id);
+var changedCadence=new RecurringRule{Id=recurring.Id,Description=recurring.Description,Type=recurring.Type,Cents=recurring.Cents,Frequency="Quincenal",StartDate=recurring.StartDate,AccountId=recurring.AccountId,CategoryId=recurring.CategoryId,Active=true};store.SaveRecurring(changedCadence);
+Check(store.Movements().Count(x=>x.RecurringRuleId==recurring.Id)==oldMonthlyCount&&store.RecurringRules().Single(x=>x.Id==recurring.Id).EffectiveFrom>DateTime.Today,"Cambiar la frecuencia conserva movimientos realizados sin generar cobros retroactivos");
 var recurringBackup=Path.Combine(folder,"recurring-demo.db");store.Backup(recurringBackup);
+int v4MovementCount=store.Movements().Count;
+using(var v4=new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={recurringBackup}"))
+{
+    v4.Open();using var sql=v4.CreateCommand();sql.CommandText="ALTER TABLE RecurringRules DROP COLUMN EffectiveFrom; ALTER TABLE RecurringRules DROP COLUMN DayOfMonth; ALTER TABLE RecurringRules DROP COLUMN Frequency; PRAGMA user_version=4;";sql.ExecuteNonQuery();
+}
+store.Restore(recurringBackup);
+Check(store.Movements().Count==v4MovementCount&&store.RecurringRules().All(x=>x.Frequency=="Mensual"&&x.DayOfMonth==x.StartDate.Day&&x.EffectiveFrom.Date==x.StartDate.Date),"La migración conserva reglas mensuales y movimientos de bases anteriores");
 store.SaveAppearance("Oscuro","#FFFFFF");PersonalFinance.Services.ThemeService.Apply(store.Appearance());Check(PersonalFinance.Services.ThemeService.BackgroundColor=="#FFFFFF","El fondo blanco se conserva en modo oscuro");
 bool colorRejected=false;try{store.SaveAppearance("Claro","rojo");}catch(InvalidOperationException){colorRejected=true;}Check(colorRejected,"No se guardan colores inválidos");
 store.Restore(legacyBackup);Check(store.Accounts().Single().Name=="Cuenta anterior"&&store.Accounts().Single().CardColor=="#625081"&&store.Appearance().Mode=="Oscuro","Se pueden restaurar respaldos anteriores y actualizar su esquema");
